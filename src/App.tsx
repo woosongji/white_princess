@@ -68,7 +68,7 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (isMelted) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const gradient = ctx.createRadialGradient(225, 225, 30, 225, 225, 225);
@@ -92,17 +92,41 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     ctx.fill();
   };
 
+  const checkMeltProgress = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    let transparentPixels = 0;
+
+    for (let i = 0; i < pixels.length; i += 4 * 20) {
+      if (pixels[i + 3] < 128) {
+        transparentPixels++;
+      }
+    }
+
+    const totalSamplePixels = pixels.length / (4 * 20);
+    const percent = (transparentPixels / totalSamplePixels) * 100;
+
+    if (percent > 50) {
+      setIsMelted(true);
+      setHairLevel(prev => Math.min(prev + 1, 10));
+      speak(`구출 성공! 이건 ${currentWord.ko}야!`);
+      setTimeout(() => speak(currentWord.en, 'en-US'), 2000);
+    }
+  };
+
   const handleUp = () => {
     if (!isDrawing || isMelted) return;
     setIsDrawing(false);
-    setIsMelted(true);
-    setHairLevel(prev => Math.min(prev + 1, 10));
-    speak(`구출 성공! 이건 ${currentWord.ko}야!`);
-    setTimeout(() => speak(currentWord.en, 'en-US'), 2000);
+    checkMeltProgress();
   };
 
   return (
-    <div style={{ position: 'relative', height: '100vh', width: '100vw', backgroundImage: "url('/background.png')", backgroundSize: '100% 100%', overflow: 'hidden', fontFamily: '"Nanum Gothic", sans-serif' }}>
+    <div className="no-select" style={{ position: 'relative', height: '100vh', width: '100vw', backgroundImage: "url('/background.png')", backgroundSize: '100% 100%', overflow: 'hidden', fontFamily: '"Nanum Gothic", sans-serif' }}>
       <button onClick={onBack} style={{ position: 'absolute', top: '30px', left: '30px', padding: '12px 25px', borderRadius: '30px', backgroundColor: 'rgba(255,255,255,0.8)', border: '2px solid #f472b6', color: '#f472b6', fontWeight: 'bold', cursor: 'pointer', zIndex: 100 }}>🏠 홈으로</button>
       <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 50px' }}>
         <div style={{ width: '25%', zIndex: 10 }}>
@@ -151,7 +175,7 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 };
 
 // ==========================================
-// 2. 색칠 놀이 (Coloring View) - 배경 b2.png 적용
+// 2. 색칠 놀이 (Coloring View)
 // ==========================================
 const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -189,7 +213,6 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       canvas.width = img.width * scale;
       canvas.height = targetHeight;
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       for (let i = 0; i < imageData.data.length; i += 4) {
         const avg = (imageData.data[i] + imageData.data[i+1] + imageData.data[i+2]) / 3;
@@ -201,13 +224,15 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     };
   };
 
-  const handleFill = (e: React.MouseEvent) => {
+  const handleFill = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isReady) return;
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor(e.clientX - rect.left);
-    const y = Math.floor(e.clientY - rect.top);
+    const clientX = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
+    const x = Math.floor(clientX - rect.left);
+    const y = Math.floor(clientY - rect.top);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = new Uint32Array(imageData.data.buffer);
     const targetColor = data[y * canvas.width + x];
@@ -231,26 +256,21 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', 
-      backgroundImage: "url('/b2.png')", // 💡 배경 b2.png로 변경
-      backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center',
-      padding: '25px', boxSizing: 'border-box', fontFamily: 'sans-serif' 
-    }}>
+    <div className="no-select" style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', backgroundImage: "url('/b2.png')", backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', padding: '25px', boxSizing: 'border-box', fontFamily: 'sans-serif' }}>
       <div style={{ width: '180px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <button onClick={onBack} style={{ padding: '12px', borderRadius: '20px', border: 'none', backgroundColor: 'rgba(255,255,255,0.9)', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', fontWeight: 'bold' }}>🏠 홈으로</button>
         <div style={{ flex: 1, overflowY: 'auto', background: 'rgba(255,255,255,0.85)', borderRadius: '30px', padding: '15px', boxShadow: '0 10px 25px rgba(0,0,0,0.06)' }}>
           <h3 style={{ textAlign: 'center', color: '#FB7185' }}>도안 목록</h3>
           {availableImages.map(src => (
-            <div key={src} onClick={() => loadToCanvas(src)} style={{ cursor: 'pointer', marginBottom: '15px', borderRadius: '15px', overflow: 'hidden', border: currentImg === src ? '5px solid #FB7185' : '2px solid #eee' }}>
-              <img src={src} alt="도안" style={{ width: '100%', display: 'block' }} />
+            <div key={src} onClick={() => loadToCanvas(src)} style={{ cursor: 'pointer', marginBottom: '15px', borderRadius: '15px', overflow: 'hidden', border: currentImg === src ? '5px solid #FB7185' : '3px solid #eee' }}>
+              <img src={src} alt="도안" style={{ width: '100%', display: 'block', pointerEvents: 'none' }} />
             </div>
           ))}
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ border: '15px solid white', borderRadius: '40px', boxShadow: '0 25px 60px rgba(0,0,0,0.12)', backgroundColor: 'white', overflow: 'hidden' }}>
-          <canvas ref={canvasRef} onClick={handleFill} style={{ cursor: 'pointer', display: isReady ? 'block' : 'none', borderRadius: '25px' }} />
+          <canvas ref={canvasRef} onClick={handleFill} onTouchStart={handleFill} style={{ cursor: 'pointer', display: isReady ? 'block' : 'none', borderRadius: '25px', touchAction: 'none' }} />
           {!isReady && <div style={{ width: '500px', height: '550px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB7185', fontWeight: 'bold' }}>로딩 중... ✨</div>}
         </div>
       </div>
@@ -277,7 +297,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<'home' | 'vocab' | 'coloring'>('home');
 
   return (
-    <div style={{ width: '100vw', height: '100vh', fontFamily: 'sans-serif', overflow: 'hidden' }}>
+    <div className="no-select" style={{ width: '100vw', height: '100vh', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       {view === 'home' && (
         <div style={{ 
           height: '100%', width: '100%', 
@@ -307,7 +327,18 @@ const App: React.FC = () => {
       )}
       {view === 'vocab' && <VocabView onBack={() => setView('home')} />}
       {view === 'coloring' && <ColoringView onBack={() => setView('home')} />}
+
       <style>{`
+        .no-select {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
+        }
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
         @keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       `}</style>
     </div>
