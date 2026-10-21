@@ -114,11 +114,30 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const gradient = ctx.createRadialGradient(225, 225, 30, 225, 225, 225);
-    gradient.addColorStop(0, 'rgba(210, 245, 255, 0.25)'); 
-    gradient.addColorStop(1, 'rgba(170, 230, 255, 0.9)'); 
-    ctx.fillStyle = gradient;
+
+    // 빙판 다이아몬드 질감 배경
+    const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bgGradient.addColorStop(0, 'rgba(170, 230, 255, 0.8)');
+    bgGradient.addColorStop(0.5, 'rgba(120, 200, 255, 0.95)');
+    bgGradient.addColorStop(1, 'rgba(80, 180, 255, 0.9)');
+    ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 하이라이트 광원 반사
+    const shine = ctx.createRadialGradient(150, 150, 10, 250, 250, 300);
+    shine.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+    shine.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = shine;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 얼음 결정선(크랙) 효과 그리기
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(100, 0); ctx.lineTo(250, 250); ctx.lineTo(150, 500);
+    ctx.moveTo(400, 0); ctx.lineTo(250, 250); ctx.lineTo(500, 300);
+    ctx.moveTo(0, 300); ctx.lineTo(250, 250);
+    ctx.stroke();
   }, [currentWord, isMelted]);
 
   const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
@@ -129,12 +148,14 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
 
-    // 마법 타격감 파티클 추가
+    // 얼음 파편 파티클 추가
     if (Math.random() > 0.6) {
-      const newParticle = { id: Date.now() + Math.random(), x: clientX, y: clientY, color: ['#FFF', '#FFD700', '#87CEFA', '#FF69B4'][Math.floor(Math.random() * 4)] };
+      const newParticle = { id: Date.now() + Math.random(), x: clientX, y: clientY, color: ['#FFFFFF', '#E0F7FA', '#B2EBF2', '#81D4FA'][Math.floor(Math.random() * 4)] };
       setParticles(prev => [...prev.slice(-15), newParticle]);
       setTimeout(() => {
         setParticles(prev => prev.filter(p => p.id !== newParticle.id));
@@ -183,14 +204,14 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   return (
     <div className="no-select" style={{ position: 'relative', height: '100vh', width: '100vw', backgroundImage: "url('/background.png')", backgroundSize: '100% 100%', overflow: 'hidden', fontFamily: '"Nanum Gothic", sans-serif' }}>
       <button className="jelly-btn" onClick={onBack} style={{ position: 'absolute', top: '30px', left: '30px', padding: '12px 25px', borderRadius: '30px', background: 'linear-gradient(135deg, #fbcfe8 0%, #f472b6 100%)', border: '4px solid white', color: 'white', fontWeight: 'bold', cursor: 'pointer', zIndex: 100, boxShadow: '0 4px 15px rgba(244,114,182,0.5)' }}>🏠 홈으로</button>
-      <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 50px' }}>
-        <div style={{ width: '25%', zIndex: 10 }}>
+      <div className="vocab-layout" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 50px', boxSizing: 'border-box' }}>
+        <div className="vocab-sidebar" style={{ width: '25%', zIndex: 10 }}>
           <div style={{ backgroundColor: 'rgba(255,255,255,0.5)', padding: '30px', borderRadius: '30px', backdropFilter: 'blur(10px)', border: '2px solid white' }}>
             <h2 style={{ fontSize: '32px', fontWeight: '900', color: 'white', margin: 0 }}>단어 구출 중!</h2>
             <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e3a8a', marginTop: '10px' }}>구출: {hairLevel} / 10</p>
           </div>
         </div>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+        <div className="vocab-main" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
           {isMelted && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 15, overflow: 'hidden' }}>
               {Array.from({ length: 50 }).map((_, i) => (
@@ -213,17 +234,18 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               position: 'fixed',
               left: p.x - 10,
               top: p.y - 10,
-              width: '20px',
-              height: '20px',
+              width: `${10 + Math.random() * 15}px`,
+              height: `${10 + Math.random() * 15}px`,
               backgroundColor: p.color,
-              borderRadius: '50%',
+              clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
+              transform: `rotate(${Math.random() * 360}deg)`,
               pointerEvents: 'none',
               zIndex: 9999,
-              boxShadow: `0 0 10px ${p.color}`,
+              boxShadow: `0 0 15px ${p.color}`,
               animation: 'sparkle 0.5s ease-out forwards'
             }} />
           ))}
-          <div style={{ position: 'relative', width: '500px', height: '500px', borderRadius: '50%', border: isMelted ? 'none' : '12px solid rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: isMelted ? 'transparent' : 'rgba(255,255,255,0.15)', transition: 'all 0.5s' }}>
+          <div className="canvas-wrapper" style={{ position: 'relative', width: '500px', height: '500px', borderRadius: '50%', border: isMelted ? 'none' : '12px solid rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: isMelted ? 'transparent' : 'rgba(255,255,255,0.15)', transition: 'all 0.5s', overflow: 'hidden' }}>
             {isMelted ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '30px', animation: 'pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
                 <div style={{ position: 'relative', animation: 'float 3s ease-in-out infinite' }}>
@@ -247,7 +269,7 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             )}
           </div>
         </div>
-        <div style={{ width: '30%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+        <div className="vocab-sidebar" style={{ width: '30%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
           <div style={{ position: 'relative', width: '350px', height: '650px' }}>
             <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('/tower_hair.png')", backgroundSize: 'contain', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat', WebkitMaskImage: `linear-gradient(to bottom, black ${15 + hairLevel * 8}%, transparent ${25 + hairLevel * 8}%)`, maskImage: `linear-gradient(to bottom, black ${15 + hairLevel * 8}%, transparent ${25 + hairLevel * 8}%)`, transition: 'all 1.5s ease-in-out' }} />
           </div>
@@ -322,31 +344,79 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
-    const x = Math.floor(clientX - rect.left);
-    const y = Math.floor(clientY - rect.top);
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.floor((clientX - rect.left) * scaleX);
+    const y = Math.floor((clientY - rect.top) * scaleY);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     // 채우기 전 현재 상태 저장 (최대 10개)
     const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    const data = new Uint32Array(imageData.data.buffer);
-    const targetColor = data[y * canvas.width + x];
-    const r = parseInt(selectedColor.slice(1, 3), 16), g = parseInt(selectedColor.slice(3, 5), 16), b = parseInt(selectedColor.slice(5, 7), 16);
-    const fillColor = (255 << 24) | (b << 16) | (g << 8) | r;
-    if (targetColor === fillColor || (targetColor & 0xFFFFFF) === 0) return;
+    const pixels = imageData.data;
+    const startPos = (y * canvas.width + x) * 4;
+    const startR = pixels[startPos];
+    const startG = pixels[startPos + 1];
+    const startB = pixels[startPos + 2];
+    const startA = pixels[startPos + 3];
 
-    setHistory(prev => [...prev.slice(-9), currentImageData]);
+    const r = parseInt(selectedColor.slice(1, 3), 16);
+    const g = parseInt(selectedColor.slice(3, 5), 16);
+    const b = parseInt(selectedColor.slice(5, 7), 16);
+    const a = 255;
 
-    const stack = [x, y];
-    while (stack.length) {
-      const cy = stack.pop()!, cx = stack.pop()!; let dy = cy;
-      while (dy >= 0 && data[dy * canvas.width + cx] === targetColor) dy--;
+    // 검은색 선이거나 투명한 배경이거나 이미 같은 색이면 무시
+    if ((startR === 0 && startG === 0 && startB === 0) || startA === 0 || (startR === r && startG === g && startB === b)) return;
+
+    setHistory(prev => [...prev.slice(-4), currentImageData]); // 히스토리 최대 5개
+
+    const matchStartColor = (pos: number) => {
+      return pixels[pos] === startR && pixels[pos + 1] === startG && pixels[pos + 2] === startB && pixels[pos + 3] === startA;
+    };
+
+    const colorPixel = (pos: number) => {
+      pixels[pos] = r;
+      pixels[pos + 1] = g;
+      pixels[pos + 2] = b;
+      pixels[pos + 3] = a;
+    };
+
+    const q: [number, number][] = [[x, y]];
+    let qIdx = 0;
+
+    while (qIdx < q.length) {
+      const [cx, cy] = q[qIdx++];
+      let dy = cy;
+      while (dy >= 0 && matchStartColor((dy * canvas.width + cx) * 4)) dy--;
       dy++;
-      let l = false, r_ = false;
-      while (dy < canvas.height && data[dy * canvas.width + cx] === targetColor) {
-        data[dy * canvas.width + cx] = fillColor;
-        if (cx > 0) { if (data[dy * canvas.width + (cx - 1)] === targetColor) { if (!l) { stack.push(cx - 1, dy); l = true; } } else if (l) l = false; }
-        if (cx < canvas.width - 1) { if (data[dy * canvas.width + (cx + 1)] === targetColor) { if (!r_) { stack.push(cx + 1, dy); r_ = true; } } else if (r_) r_ = false; }
+
+      let l = false;
+      let r_flag = false;
+
+      while (dy < canvas.height && matchStartColor((dy * canvas.width + cx) * 4)) {
+        colorPixel((dy * canvas.width + cx) * 4);
+
+        if (cx > 0) {
+          if (matchStartColor((dy * canvas.width + (cx - 1)) * 4)) {
+            if (!l) {
+              q.push([cx - 1, dy]);
+              l = true;
+            }
+          } else if (l) {
+            l = false;
+          }
+        }
+
+        if (cx < canvas.width - 1) {
+          if (matchStartColor((dy * canvas.width + (cx + 1)) * 4)) {
+            if (!r_flag) {
+              q.push([cx + 1, dy]);
+              r_flag = true;
+            }
+          } else if (r_flag) {
+            r_flag = false;
+          }
+        }
         dy++;
       }
     }
@@ -354,8 +424,8 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   return (
-    <div className="no-select" style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', backgroundImage: "url('/b2.png')", backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', padding: '25px', boxSizing: 'border-box', fontFamily: 'sans-serif' }}>
-      <div style={{ width: '180px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+    <div className="no-select coloring-layout" style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', backgroundImage: "url('/b2.png')", backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', padding: '25px', boxSizing: 'border-box', fontFamily: 'sans-serif' }}>
+      <div className="coloring-sidebar" style={{ width: '180px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <button className="jelly-btn" onClick={onBack} style={{ padding: '12px', borderRadius: '20px', background: 'linear-gradient(135deg, #fbcfe8 0%, #f472b6 100%)', border: '4px solid white', boxShadow: '0 4px 15px rgba(244,114,182,0.5)', cursor: 'pointer', fontWeight: 'bold', color: 'white' }}>🏠 홈으로</button>
         <div style={{ flex: 1, overflowY: 'auto', background: 'rgba(255,255,255,0.85)', borderRadius: '30px', padding: '15px', boxShadow: '0 10px 25px rgba(0,0,0,0.06)' }}>
           <h3 style={{ textAlign: 'center', color: '#FB7185' }}>도안 목록</h3>
@@ -367,12 +437,12 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ border: '15px solid white', borderRadius: '40px', boxShadow: '0 25px 60px rgba(0,0,0,0.12)', backgroundColor: 'white', overflow: 'hidden' }}>
+        <div className="canvas-wrapper" style={{ border: '15px solid white', borderRadius: '40px', boxShadow: '0 25px 60px rgba(0,0,0,0.12)', backgroundColor: 'white', overflow: 'hidden', position: 'relative' }}>
           <canvas ref={canvasRef} onClick={handleFill} onTouchStart={handleFill} style={{ cursor: 'pointer', display: isReady ? 'block' : 'none', borderRadius: '25px', touchAction: 'none' }} />
           {!isReady && <div style={{ width: '500px', height: '550px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB7185', fontWeight: 'bold' }}>로딩 중... ✨</div>}
         </div>
       </div>
-      <div style={{ width: '280px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.85)', borderRadius: '30px', padding: '20px', marginLeft: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.06)' }}>
+      <div className="coloring-tools" style={{ width: '280px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.85)', borderRadius: '30px', padding: '20px', marginLeft: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.06)' }}>
         <h3 style={{ color: '#FB7185', margin: '0 0 15px 0', fontSize: '24px', fontWeight: '900', textShadow: '0 2px 5px rgba(251,113,133,0.3)' }}>✨ 마법 물감 ✨</h3>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '20px', overflowY: 'auto', padding: '10px 0' }}>
           {COLORING_COLORS.map(color => (
@@ -432,7 +502,7 @@ const App: React.FC = () => {
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
             <h1 style={{ fontSize: '65px', color: '#f472b6', fontWeight: '900', textShadow: '3px 3px 10px white' }}>✨ 마법 놀이터 ✨</h1>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, width: '100%', maxWidth: '1100px', padding: '0 60px' }}>
+          <div className="home-buttons" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, width: '100%', maxWidth: '1100px', padding: '0 60px', boxSizing: 'border-box' }}>
             <button className="jelly-btn" onClick={() => setView('vocab')} style={{ width: '260px', height: '330px', background: 'linear-gradient(135deg, #a7f3d0 0%, #60a5fa 100%)', borderRadius: '50px', border: '8px solid rgba(255,255,255,0.8)', boxShadow: '0 15px 35px rgba(0,0,0,0.2), inset 0 0 20px rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>
               <span style={{ fontSize: '90px', marginBottom: '15px', textShadow: '0 5px 15px rgba(0,0,0,0.2)' }}>🧊</span>
               <span style={{ fontSize: '28px', fontWeight: '900', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>단어 구출</span>

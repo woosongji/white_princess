@@ -40,3 +40,46 @@
 .read-the-docs {
   color: #888;
 }
+
+
+/* 반응형 (패드/PC 가로 모드) */
+@media (max-width: 1024px) {
+  .vocab-layout, .coloring-layout {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    padding: 20px !important;
+    gap: 20px !important;
+  }
+  .vocab-sidebar, .coloring-sidebar, .coloring-tools {
+    width: 100% !important;
+    max-width: 500px !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+  .canvas-wrapper {
+    width: 100% !important;
+    max-width: 500px !important;
+    height: auto !important;
+    aspect-ratio: 1/1 !important;
+  }
+  .canvas-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .home-buttons {
+    flex-direction: column !important;
+    gap: 30px !important;
+  }
+}
+
+/* 반응형 (스마트폰 세로 모드) */
+@media (max-width: 768px) {
+  .vocab-layout, .coloring-layout {
+    padding: 10px !important;
+    gap: 15px !important;
+  }
+  .jelly-btn {
+    padding: 10px 15px !important;
+    font-size: 16px !important;
+  }
+}
