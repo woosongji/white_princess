@@ -1,4 +1,67 @@
 import React, { useState, useEffect, useRef } from 'react';
+import './App.css';
+
+// ==========================================
+// Confetti Component
+// ==========================================
+const Confetti: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles: any[] = [];
+    const colors = ['#f472b6', '#fbbf24', '#a78bfa', '#34d399', '#60a5fa', '#FFC6FF', '#FDFFB6'];
+
+    for (let i = 0; i < 150; i++) {
+      particles.push({
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        r: Math.random() * 8 + 3,
+        dx: Math.random() * 15 - 7.5,
+        dy: Math.random() * 15 - 7.5,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: 1.0,
+        decay: Math.random() * 0.015 + 0.01
+      });
+    }
+
+    let animationId: number;
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (p.life <= 0) continue;
+        ctx.beginPath();
+        // Star or circle
+        if (Math.random() > 0.5) {
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        } else {
+          ctx.rect(p.x, p.y, p.r * 2, p.r * 2);
+        }
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(p.life, 0);
+        ctx.fill();
+        p.x += p.dx;
+        p.y += p.dy;
+        p.dy += 0.2; // gravity
+        p.life -= p.decay;
+      }
+      animationId = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => cancelAnimationFrame(animationId);
+  }, []);
+
+  return <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 9999 }} />;
+};
 
 // ==========================================
 // 공통 데이터 및 설정
@@ -39,6 +102,7 @@ const WORD_POOL = [
 // ==========================================
 const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [isMelted, setIsMelted] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentWord, setCurrentWord] = useState(WORD_POOL[0]);
   const [hairLevel, setHairLevel] = useState(0); 
@@ -113,6 +177,8 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     if (percent > 50) {
       setIsMelted(true);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2500);
       setHairLevel(prev => Math.min(prev + 1, 10));
       speak(`구출 성공! 이건 ${currentWord.ko}야!`);
       setTimeout(() => speak(currentWord.en, 'en-US'), 2000);
@@ -127,16 +193,17 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   return (
     <div className="no-select" style={{ position: 'relative', height: '100vh', width: '100vw', backgroundImage: "url('/background.png')", backgroundSize: '100% 100%', overflow: 'hidden', fontFamily: '"Nanum Gothic", sans-serif' }}>
-      <button onClick={onBack} style={{ position: 'absolute', top: '30px', left: '30px', padding: '12px 25px', borderRadius: '30px', backgroundColor: 'rgba(255,255,255,0.8)', border: '2px solid #f472b6', color: '#f472b6', fontWeight: 'bold', cursor: 'pointer', zIndex: 100 }}>🏠 홈으로</button>
+      {showConfetti && <Confetti />}
+      <button className="btn-bounce glass-panel" onClick={onBack} style={{ position: 'absolute', top: '30px', left: '30px', padding: '12px 25px', borderRadius: '30px', border: '2px solid rgba(244,114,182,0.5)', color: '#f472b6', fontWeight: 'bold', cursor: 'pointer', zIndex: 100 }}>🏠 홈으로</button>
       <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 50px' }}>
         <div style={{ width: '25%', zIndex: 10 }}>
-          <div style={{ backgroundColor: 'rgba(255,255,255,0.5)', padding: '30px', borderRadius: '30px', backdropFilter: 'blur(10px)', border: '2px solid white' }}>
+          <div className="glass-panel" style={{ padding: '30px', borderRadius: '30px', border: '2px solid rgba(255,255,255,0.4)' }}>
             <h2 style={{ fontSize: '32px', fontWeight: '900', color: 'white', margin: 0 }}>단어 구출 중!</h2>
             <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e3a8a', marginTop: '10px' }}>구출: {hairLevel} / 10</p>
           </div>
         </div>
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
-          <div style={{ position: 'relative', width: '500px', height: '500px', borderRadius: '50%', border: isMelted ? 'none' : '12px solid rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: isMelted ? 'transparent' : 'rgba(255,255,255,0.15)', transition: 'all 0.5s' }}>
+          <div style={{ position: 'relative', width: '500px', height: '500px', borderRadius: '50%', border: isMelted ? 'none' : '12px solid rgba(255,255,255,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: isMelted ? 'transparent' : 'rgba(255,255,255,0.15)', backdropFilter: isMelted ? 'none' : 'blur(5px)', transition: 'all 0.5s', boxShadow: isMelted ? 'none' : '0 10px 30px rgba(0,0,0,0.1)' }}>
             {isMelted ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '30px', animation: 'pop 0.6s' }}>
                 <span style={{ fontSize: '150px', lineHeight: '1', margin: 0 }}>{currentWord.emoji}</span>
@@ -164,7 +231,7 @@ const VocabView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </div>
         {isMelted && (
           <div style={{ position: 'absolute', bottom: '50px', left: '0', width: '100%', display: 'flex', justifyContent: 'center', zIndex: 20 }}>
-            <button onClick={() => { setIsMelted(false); pickRandomWord(); }} style={{ padding: '18px 60px', borderRadius: '50px', backgroundColor: '#F59E0B', color: 'white', fontSize: '24px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 8px 15px rgba(0,0,0,0.2)' }}>
+            <button className="btn-bounce" onClick={() => { setIsMelted(false); pickRandomWord(); }} style={{ padding: '18px 60px', borderRadius: '50px', backgroundColor: '#F59E0B', color: 'white', fontSize: '24px', fontWeight: 'bold', border: '2px solid rgba(255,255,255,0.4)', cursor: 'pointer', boxShadow: '0 8px 25px rgba(245,158,11,0.5)' }}>
                {hairLevel >= 10 ? "마법 완성! 다시 시작 👸" : "다음 친구 구출하기 ➡️"}
             </button>
           </div>
@@ -183,6 +250,8 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [availableImages, setAvailableImages] = useState<string[]>([]);
   const [currentImg, setCurrentImg] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const undoStackRef = useRef<ImageData[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
 
   useEffect(() => {
     const scanImages = async () => {
@@ -220,8 +289,19 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         imageData.data[i] = imageData.data[i+1] = imageData.data[i+2] = val;
       }
       ctx.putImageData(imageData, 0, 0);
+      undoStackRef.current = [];
+      setCanUndo(false);
       setIsReady(true);
     };
+  };
+
+  const handleUndo = () => {
+    if (undoStackRef.current.length === 0) return;
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext('2d')!;
+    const previousState = undoStackRef.current.pop()!;
+    ctx.putImageData(previousState, 0, 0);
+    setCanUndo(undoStackRef.current.length > 0);
   };
 
   const handleFill = (e: React.MouseEvent | React.TouchEvent) => {
@@ -239,6 +319,12 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const r = parseInt(selectedColor.slice(1, 3), 16), g = parseInt(selectedColor.slice(3, 5), 16), b = parseInt(selectedColor.slice(5, 7), 16);
     const fillColor = (255 << 24) | (b << 16) | (g << 8) | r;
     if (targetColor === fillColor || (targetColor & 0xFFFFFF) === 0) return;
+
+    // Save state before filling
+    undoStackRef.current.push(new ImageData(new Uint8ClampedArray(imageData.data), canvas.width, canvas.height));
+    if (undoStackRef.current.length > 10) undoStackRef.current.shift();
+    setCanUndo(true);
+
     const stack = [x, y];
     while (stack.length) {
       const cy = stack.pop()!, cx = stack.pop()!; let dy = cy;
@@ -258,33 +344,39 @@ const ColoringView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   return (
     <div className="no-select" style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', backgroundImage: "url('/b2.png')", backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', padding: '25px', boxSizing: 'border-box', fontFamily: 'sans-serif' }}>
       <div style={{ width: '180px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <button onClick={onBack} style={{ padding: '12px', borderRadius: '20px', border: 'none', backgroundColor: 'rgba(255,255,255,0.9)', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', fontWeight: 'bold' }}>🏠 홈으로</button>
-        <div style={{ flex: 1, overflowY: 'auto', background: 'rgba(255,255,255,0.85)', borderRadius: '30px', padding: '15px', boxShadow: '0 10px 25px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ textAlign: 'center', color: '#FB7185' }}>도안 목록</h3>
+        <button className="btn-bounce glass-panel" onClick={onBack} style={{ padding: '12px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.6)', cursor: 'pointer', fontWeight: 'bold', color: '#FB7185' }}>🏠 홈으로</button>
+        <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', borderRadius: '30px', padding: '15px', border: '1px solid rgba(255,255,255,0.4)' }}>
+          <h3 style={{ textAlign: 'center', color: '#FB7185', marginTop: 0 }}>도안 목록</h3>
           {availableImages.map(src => (
-            <div key={src} onClick={() => loadToCanvas(src)} style={{ cursor: 'pointer', marginBottom: '15px', borderRadius: '15px', overflow: 'hidden', border: currentImg === src ? '5px solid #FB7185' : '3px solid #eee' }}>
+            <div key={src} className={currentImg === src ? 'thumb-selected' : ''} onClick={() => loadToCanvas(src)} style={{ cursor: 'pointer', marginBottom: '15px', borderRadius: '15px', overflow: 'hidden', border: currentImg === src ? '4px solid #FB7185' : '3px solid rgba(255,255,255,0.5)', transition: 'all 0.3s' }}>
               <img src={src} alt="도안" style={{ width: '100%', display: 'block', pointerEvents: 'none' }} />
             </div>
           ))}
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ border: '15px solid white', borderRadius: '40px', boxShadow: '0 25px 60px rgba(0,0,0,0.12)', backgroundColor: 'white', overflow: 'hidden' }}>
+        <div className="glass-panel" style={{ padding: '15px', borderRadius: '40px', backgroundColor: 'rgba(255,255,255,0.7)', border: '2px solid rgba(255,255,255,0.8)' }}>
           <canvas ref={canvasRef} onClick={handleFill} onTouchStart={handleFill} style={{ cursor: 'pointer', display: isReady ? 'block' : 'none', borderRadius: '25px', touchAction: 'none' }} />
-          {!isReady && <div style={{ width: '500px', height: '550px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB7185', fontWeight: 'bold' }}>로딩 중... ✨</div>}
+          {!isReady && <div style={{ width: '500px', height: '550px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB7185', fontWeight: 'bold', fontSize: '24px' }}>로딩 중... ✨</div>}
         </div>
       </div>
-      <div style={{ width: '240px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.85)', borderRadius: '30px', padding: '20px', marginLeft: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.06)' }}>
-        <h3 style={{ color: '#FB7185' }}>마법 물감</h3>
+      <div className="glass-panel" style={{ width: '240px', display: 'flex', flexDirection: 'column', alignItems: 'center', borderRadius: '30px', padding: '20px', marginLeft: '25px', border: '1px solid rgba(255,255,255,0.4)' }}>
+        <h3 style={{ color: '#FB7185', marginTop: 0 }}>마법 물감</h3>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '20px', overflowY: 'auto' }}>
           {COLORING_COLORS.map(color => (
-            <button key={color} onClick={() => setSelectedColor(color)} style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: color, border: selectedColor === color ? '5px solid #333' : '3px solid #eee', cursor: 'pointer' }} />
+            <button key={color} className="btn-bounce" onClick={() => setSelectedColor(color)} style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: color, border: selectedColor === color ? '4px solid #333' : '3px solid rgba(255,255,255,0.8)', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
           ))}
         </div>
-        <button onClick={() => setSelectedColor('#FFFFFF')} style={{ width: '120px', height: '55px', borderRadius: '15px', backgroundColor: 'white', border: selectedColor === '#FFFFFF' ? '5px solid #FB7185' : '3px solid #eee', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '24px' }}>🧼</span>
-          <span style={{ fontWeight: 'bold', color: selectedColor === '#FFFFFF' ? '#FB7185' : '#888' }}>지우개</span>
-        </button>
+        <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+          <button className="btn-bounce" onClick={() => setSelectedColor('#FFFFFF')} style={{ flex: 1, height: '55px', borderRadius: '15px', backgroundColor: 'rgba(255,255,255,0.9)', border: selectedColor === '#FFFFFF' ? '4px solid #FB7185' : '2px solid rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+            <span style={{ fontSize: '20px' }}>🧼</span>
+            <span style={{ fontWeight: 'bold', color: selectedColor === '#FFFFFF' ? '#FB7185' : '#888' }}>지우개</span>
+          </button>
+          <button className="btn-bounce" onClick={handleUndo} disabled={!canUndo} style={{ flex: 1, height: '55px', borderRadius: '15px', backgroundColor: canUndo ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)', border: '2px solid rgba(255,255,255,0.8)', cursor: canUndo ? 'pointer' : 'not-allowed', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', opacity: canUndo ? 1 : 0.6 }}>
+            <span style={{ fontSize: '20px' }}>↩️</span>
+            <span style={{ fontWeight: 'bold', color: '#64748b' }}>취소</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -313,11 +405,11 @@ const App: React.FC = () => {
             <h1 style={{ fontSize: '65px', color: '#f472b6', fontWeight: '900', textShadow: '3px 3px 10px white' }}>✨ 마법 놀이터 ✨</h1>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, width: '100%', maxWidth: '1100px', padding: '0 60px' }}>
-            <button onClick={() => setView('vocab')} style={{ width: '260px', height: '330px', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: '50px', border: '5px solid #1565C0', boxShadow: '0 15px 35px rgba(0,0,0,0.15)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>
+            <button className="btn-bounce glass-panel" onClick={() => setView('vocab')} style={{ width: '260px', height: '330px', borderRadius: '50px', border: '5px solid rgba(21,101,192,0.6)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: '90px', marginBottom: '15px' }}>🧊</span>
               <span style={{ fontSize: '26px', fontWeight: 'bold', color: '#1565C0' }}>단어 구출</span>
             </button>
-            <button onClick={() => setView('coloring')} style={{ width: '260px', height: '330px', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: '50px', border: '5px solid #D81B60', boxShadow: '0 15px 35px rgba(0,0,0,0.15)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>
+            <button className="btn-bounce glass-panel" onClick={() => setView('coloring')} style={{ width: '260px', height: '330px', borderRadius: '50px', border: '5px solid rgba(216,27,96,0.6)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: '90px', marginBottom: '15px' }}>🎨</span>
               <span style={{ fontSize: '26px', fontWeight: 'bold', color: '#D81B60' }}>색칠 놀이</span>
             </button>

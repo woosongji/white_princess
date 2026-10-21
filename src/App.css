@@ -40,3 +40,52 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Glassmorphism Panel */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 30px;
+}
+
+/* Bouncy Button Animation */
+.btn-bounce {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+}
+
+.btn-bounce:active {
+  transform: scale(0.92);
+}
+
+.btn-bounce:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+/* Thumbnail Selection Pulse */
+.thumb-selected {
+  animation: pulse-ring 1.5s infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(251, 113, 133, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0);
+  }
+}
+
+/* Responsive Rules (Strictly preserved requirement) */
+@media (max-width: 768px) {
+  /* Ensure core functionality remains usable on mobile */
+  .no-select {
+    padding: 10px;
+  }
+}
